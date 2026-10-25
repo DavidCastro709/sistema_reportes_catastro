@@ -1,0 +1,10 @@
+{
+  "expo": {
+    "name": "Catastro Reportes",
+    "slug": "catastro-reportes",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "plugins": ["expo-secure-store"]
+  }
+}

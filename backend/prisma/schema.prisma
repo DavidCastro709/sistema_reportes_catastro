@@ -1,0 +1,90 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  USER
+}
+
+enum ReportStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum ReportVisibility {
+  ALL_USERS
+  OWNER_ONLY
+}
+
+model User {
+  id             String      @id @default(cuid())
+  email          String      @unique @db.VarChar(254)
+  fullName       String      @db.VarChar(160)
+  passwordHash   String
+  role           Role        @default(USER)
+  isActive       Boolean     @default(true)
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  reportsCreated Report[]    @relation("ReportCreator")
+  ownedReports   Report[]    @relation("ReportOwner")
+  auditLogs      AuditLog[]
+
+  @@index([role, isActive])
+}
+
+model Report {
+  id          String           @id @default(cuid())
+  title       String           @db.VarChar(180)
+  folio       String           @unique @db.VarChar(40)
+  status      ReportStatus     @default(DRAFT)
+  visibility ReportVisibility @default(ALL_USERS)
+  parameters  Json
+  createdById String
+  ownerUserId String?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  createdBy   User             @relation("ReportCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  owner       User?            @relation("ReportOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
+  rows        ReportRow[]
+
+  @@index([status, createdAt(sort: Desc)])
+  @@index([ownerUserId, status])
+}
+
+model ReportRow {
+  id          String   @id @default(cuid())
+  reportId    String
+  cadastralId String   @db.VarChar(80)
+  description String   @db.VarChar(240)
+  amount      Decimal  @db.Decimal(14, 2)
+  income      Decimal  @default(0) @db.Decimal(14, 2)
+  createdAt   DateTime @default(now())
+  report      Report   @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@index([reportId])
+  @@index([cadastralId])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?
+  action     String   @db.VarChar(80)
+  entity     String   @db.VarChar(80)
+  entityId   String   @db.VarChar(80)
+  oldValues  Json?
+  newValues  Json?
+  ipAddress  String?  @db.VarChar(64)
+  createdAt  DateTime @default(now())
+  actor      User?    @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt(sort: Desc)])
+  @@index([actorId, createdAt(sort: Desc)])
+  @@index([entity, entityId])
+}
